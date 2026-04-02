@@ -1,0 +1,9 @@
+streamlit==1.38.0
+streamlit-autorefresh
+firebase-admin
+joblib
+numpy
+pandas
+scikit-learn
+plotly
+altair
