@@ -5,17 +5,18 @@ from firebase_admin import credentials, db
 import joblib
 import numpy as np
 import json
-import os
 import altair as alt
 import time
 
 st.set_page_config(page_title="AI Fault Diagnosis System", layout="wide")
 
-# Firebase initialization (FIXED)
+# Firebase initialization (FOR STREAMLIT CLOUD)
 if not firebase_admin._apps:
-    cred = credentials.Certificate("firebase_key.json")
+    cred_dict = json.loads(st.secrets["FIREBASE_CREDENTIALS"])
+    cred = credentials.Certificate(cred_dict)
+
     firebase_admin.initialize_app(cred, {
-        'databaseURL': "https://fault-detection-system-775e1-default-rtdb.firebaseio.com/"
+        "databaseURL": st.secrets["DATABASE_URL"]
     })
 
 sensor_ref = db.reference('sensor_data')
@@ -35,16 +36,25 @@ def preprocess_features(entry):
     }])
 
 def fetch_firebase_data():
-    data_snapshot = sensor_ref.get()
-    data_list = []
-    if data_snapshot:
-        for key in sorted(data_snapshot.keys()):
-            entry = data_snapshot[key]
-            entry['Timestamp'] = entry.get('time', key)
-            prediction = model.predict(preprocess_features(entry))[0]
-            entry['Fault_Status'] = "Faulty" if prediction == 1 else "Normal"
-            data_list.append(entry)
-    return data_list
+    try:
+        data_snapshot = sensor_ref.get()
+        data_list = []
+
+        if data_snapshot:
+            for key in sorted(data_snapshot.keys()):
+                entry = data_snapshot[key]
+                entry['Timestamp'] = entry.get('time', key)
+
+                prediction = model.predict(preprocess_features(entry))[0]
+                entry['Fault_Status'] = "Faulty" if prediction == 1 else "Normal"
+
+                data_list.append(entry)
+
+        return data_list
+
+    except Exception as e:
+        st.error(f"Firebase connection error: {e}")
+        return []
 
 data_list = fetch_firebase_data()
 
